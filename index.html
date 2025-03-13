@@ -1,0 +1,261 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Gerador de Etiquetas de Identificação Para Projetos FAEN</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 0;
+            padding: 0;
+            background-color: #f4f4f4;
+            display: flex;
+            flex-direction: column;
+            min-height: 100vh;
+        }
+
+        .container {
+            width: 80%;
+            margin: 20px auto;
+            padding: 20px;
+            background-color: #fff;
+            box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+            flex: 1;
+        }
+
+        h1 {
+            text-align: center;
+            color: #333;
+        }
+        h6 {
+            text-align: center;
+            color: red;
+        }
+
+        form {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+
+        label {
+            font-weight: bold;
+        }
+
+        input, button {
+            padding: 10px;
+            font-size: 16px;
+            border: 1px solid #ccc;
+            border-radius: 5px;
+        }
+
+        button {
+            background-color: rgb(200, 212, 0);
+            color: white;
+            border: none;
+            cursor: pointer;
+        }
+
+        button:hover {
+            background-color: orange;
+        }
+
+        footer {
+            text-align: center;
+            padding: 10px;
+            background-color: rgb(116, 151, 25);
+            color: white;
+            margin-top: auto;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Gerador de Etiquetas de Identificação Para Projetos FAEN</h1>
+        <form id="etiquetaForm">
+            <label for="nomeProjeto">Nome do Projeto:</label>
+            <input type="text" id="nomeProjeto" name="nomeProjeto" required>
+
+            <label for="professorResponsavel">Professor Responsável:</label>
+            <input type="text" id="professorResponsavel" name="professorResponsavel" required>
+
+            <label for="dataInicio">Data de Início:</label>
+            <input type="date" id="dataInicio" name="dataInicio" required>
+
+            <label for="dataFim">Data de Fim:</label>
+            <input type="date" id="dataFim" name="dataFim" required>
+
+            <label for="telefoneContato">Telefone para Contato:</label>
+            <input type="text" id="telefoneContato" name="telefoneContato" required maxlength="15">
+
+            <button type="submit">Gerar Etiquetas em PDF (14 por folha)</button>
+            <button type="button" id="gerarEtiquetasGrandes">Gerar Etiquetas Grandes (2 por folha)</button>
+        </form>
+    </div>
+
+    <footer>
+        Feito por Carlos Henrique - Laboratórios de Informática FAEN
+    </footer>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <script>
+        // Função para formatar o telefone no padrão brasileiro: (99) 99999-9999
+        function formatarTelefone(telefone) {
+            // Remove tudo que não é número
+            telefone = telefone.replace(/\D/g, '');
+
+            // Aplica a formatação
+            if (telefone.length > 2) {
+                telefone = `(${telefone.substring(0, 2)}) ${telefone.substring(2)}`;
+            }
+            if (telefone.length > 10) {
+                telefone = `${telefone.substring(0, 10)}-${telefone.substring(10)}`;
+            }
+
+            return telefone;
+        }
+
+        // Adiciona a formatação ao campo de telefone enquanto o usuário digita
+        document.getElementById('telefoneContato').addEventListener('input', function(event) {
+            this.value = formatarTelefone(this.value);
+        });
+
+        document.getElementById('etiquetaForm').addEventListener('submit', function(event) {
+            event.preventDefault();
+
+            const nomeProjeto = document.getElementById('nomeProjeto').value;
+            const professorResponsavel = document.getElementById('professorResponsavel').value;
+            const dataInicio = formatarData(document.getElementById('dataInicio').value);
+            const dataFim = formatarData(document.getElementById('dataFim').value);
+            const telefoneContato = document.getElementById('telefoneContato').value;
+
+            const etiquetaInfo = {
+                nomeProjeto,
+                professorResponsavel,
+                dataInicio,
+                dataFim,
+                telefoneContato
+            };
+
+            gerarPDF(etiquetaInfo);
+        });
+
+        // Novo botão para gerar etiquetas grandes
+        document.getElementById('gerarEtiquetasGrandes').addEventListener('click', function(event) {
+            event.preventDefault();
+
+            const nomeProjeto = document.getElementById('nomeProjeto').value;
+            const professorResponsavel = document.getElementById('professorResponsavel').value;
+            const dataInicio = formatarData(document.getElementById('dataInicio').value);
+            const dataFim = formatarData(document.getElementById('dataFim').value);
+            const telefoneContato = document.getElementById('telefoneContato').value;
+
+            const etiquetaInfo = {
+                nomeProjeto,
+                professorResponsavel,
+                dataInicio,
+                dataFim,
+                telefoneContato
+            };
+
+            gerarPDFGrandes(etiquetaInfo);
+        });
+
+        // Função para formatar a data no padrão brasileiro (DD-MM-YYYY)
+        function formatarData(data) {
+            const [ano, mes, dia] = data.split('-');
+            return `${dia}-${mes}-${ano}`;
+        }
+
+        // Função para gerar PDF com 14 etiquetas por folha (não alterada)
+        async function gerarPDF(info) {
+            const { jsPDF } = window.jspdf;
+            const doc = new jsPDF();
+
+            const etiquetasPorFolha = 14; // 14 etiquetas por folha A4
+            const etiquetaWidth = 80; // 8cm em mm
+            const etiquetaHeight = 30; // 3cm em mm
+            const margin = 10; // Margem entre as etiquetas
+
+            // Carregar a imagem do logo
+            const logoUrl = 'https://i.imgur.com/nv8irYS.png';
+            const logo = await loadImage(logoUrl);
+            const logoWidth = 20; // Largura do logo em mm
+            const logoHeight = 20; // Altura do logo em mm
+
+            for (let i = 0; i < etiquetasPorFolha; i++) {
+                const x = margin + (i % 2) * (etiquetaWidth + margin);
+                const y = margin + Math.floor(i / 2) * (etiquetaHeight + margin);
+
+                // Centralizar a logo verticalmente
+                const logoY = y + (etiquetaHeight - logoHeight) / 2;
+
+                // Adicionar o logo
+                doc.addImage(logo, 'PNG', x, logoY, logoWidth, logoHeight);
+
+                // Adicionar o texto ao lado do logo
+                doc.setFontSize(10);
+                const textX = x + logoWidth + 5;
+                const textY = y + (etiquetaHeight / 2) - 10; // Ajuste para centralizar o texto
+                doc.text(info.nomeProjeto, textX, textY);
+                doc.text(`Professor: ${info.professorResponsavel}`, textX, textY + 5);
+                doc.text(`Início: ${info.dataInicio}`, textX, textY + 10);
+                doc.text(`Fim: ${info.dataFim}`, textX, textY + 15);
+                doc.text(`Contato: ${info.telefoneContato}`, textX, textY + 20);
+            }
+
+            doc.save('etiquetas.pdf');
+        }
+
+        // Função para gerar PDF com 2 etiquetas grandes por folha
+        async function gerarPDFGrandes(info) {
+            const { jsPDF } = window.jspdf;
+            const doc = new jsPDF();
+
+            const etiquetasPorFolha = 2; // 2 etiquetas por folha A4
+            const etiquetaWidth = 170; // 170mm de largura
+            const etiquetaHeight = 135; // 135mm de altura
+            const margin = 10; // Margem entre as etiquetas
+
+            // Carregar a imagem do logo
+            const logoUrl = 'https://i.imgur.com/nv8irYS.png';
+            const logo = await loadImage(logoUrl);
+            const logoWidth = 40; // Largura do logo em mm
+            const logoHeight = 40; // Altura do logo em mm
+
+            for (let i = 0; i < etiquetasPorFolha; i++) {
+                const x = margin; // Centralizado horizontalmente
+                const y = margin + i * (etiquetaHeight + margin); // Uma em cima da outra
+
+                // Centralizar a logo verticalmente
+                const logoX = x + 20; // 20mm de margem interna
+                const logoY = y + 20; // 20mm de margem interna
+
+                // Adicionar o logo
+                doc.addImage(logo, 'PNG', logoX, logoY, logoWidth, logoHeight);
+
+                // Adicionar o texto ao lado do logo
+                doc.setFontSize(16);
+                const textX = logoX + logoWidth + 10; // 10mm de espaçamento entre logo e texto
+                const textY = logoY + (logoHeight / 2) - 10; // Alinhar verticalmente com o centro do logo
+                doc.text(info.nomeProjeto, textX, textY);
+                doc.text(`Professor: ${info.professorResponsavel}`, textX, textY + 10);
+                doc.text(`Início: ${info.dataInicio}`, textX, textY + 20);
+                doc.text(`Fim: ${info.dataFim}`, textX, textY + 30);
+                doc.text(`Contato: ${info.telefoneContato}`, textX, textY + 40);
+            }
+
+            doc.save('etiquetas_grandes.pdf');
+        }
+
+        function loadImage(url) {
+            return new Promise((resolve) => {
+                const img = new Image();
+                img.src = url;
+                img.onload = () => resolve(img);
+            });
+        }
+    </script>
+</body>
+</html>
